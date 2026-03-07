@@ -65,22 +65,32 @@
 
         .annotation.left {
             left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
+            bottom: 16px;
+            transform: translateX(50%);
         }
 
         .annotation.right {
             right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
+            bottom: 16px;
+            transform: translateX(-50%);
         }
 
         .annotation.index {
+            font-size: 2rem;
             top: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 14px;
+            left: 12px;
+            transform: none;
             padding: 6px 10px;
+        }
+
+        .annotation.left {
+            color: black;
+            background-color: #7ec8ff;
+        }
+
+        .annotation.right {
+            color: black;
+            background-color: #ff9a9a;
         }
 
         .empty {
@@ -131,7 +141,7 @@
                 <div class="card">
                     <div class="image-wrap">
                         <img class="image" src="${entry.image_url}" alt="Measurement image" />
-                        <div class="annotation index">#${displayIndex}</div>
+                        <div class="annotation index">${displayIndex}</div>
                         <div class="annotation left">${entry.blue_weight} kg</div>
                         <div class="annotation right">${entry.red_weight} kg</div>
                     </div>
