@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cow Measurement Display Wall</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(to bottom, #ececec, #d9d9d9);
+            min-height: 100vh;
+            color: #222;
+        }
+
+        .page {
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status {
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid #bcbcbc;
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: #f7f7f7;
+            border: 2px solid #a0a0a0;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 320px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 5px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .image-wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 320px;
+            background: #111;
+        }
+
+        .image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .annotation {
+            position: absolute;
+            bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.88);
+            color: #222;
+            border: 1px solid #909090;
+            border-radius: 6px;
+            padding: 6px 10px;
+        }
+
+        .annotation.left {
+            left: 10px;
+        }
+
+        .annotation.right {
+            right: 10px;
+        }
+
+        .empty {
+            width: 100%;
+            height: 100%;
+            min-height: 320px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #666;
+            font-size: 24px;
+            font-weight: bold;
+            background: repeating-linear-gradient(
+                45deg,
+                #dcdcdc,
+                #dcdcdc 12px,
+                #cfcfcf 12px,
+                #cfcfcf 24px
+            );
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="title">Display Wall</div>
+            <div id="status" class="status">Loading...</div>
+        </div>
+
+        <div id="grid" class="grid"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://iukxcgvmzjfelwfrpkyi.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1a3hjZ3ZtempmZWx3ZnJwa3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0ODIyNTUsImV4cCI6MjA1ODA1ODI1NX0.GeapZttOxLzI_rnUUo6wlApy8wfHdkYzFNrSnP5NIYw';
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const gridEl = document.getElementById('grid');
+        const statusEl = document.getElementById('status');
+
+        const BATCH_SIZE = 4;
+        const ROTATE_MS = 5000;
+
+        let currentStartIndex = 0;
+        let isRefreshing = false;
+
+        function renderSlot(entry) {
+            if (!entry) {
+                return `
+                    <div class="card">
+                        <div class="empty">Empty</div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="card">
+                    <div class="image-wrap">
+                        <img class="image" src="${entry.image_url}" alt="Measurement image" />
+                        <div class="annotation left">${entry.blue_weight} kg</div>
+                        <div class="annotation right">${entry.red_weight} kg</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getBatch(entries, startIndex) {
+            const batch = entries.slice(startIndex, startIndex + BATCH_SIZE);
+            while (batch.length < BATCH_SIZE) {
+                batch.push(null);
+            }
+            return batch;
+        }
+
+        function getNextStartIndex(entriesLength, startIndex) {
+            if (entriesLength === 0) {
+                return 0;
+            }
+
+            const nextIndex = startIndex + BATCH_SIZE;
+            if (nextIndex >= entriesLength) {
+                return 0;
+            }
+
+            return nextIndex;
+        }
+
+        async function fetchAllMeasurements() {
+            const { data, error } = await supabaseClient
+                .from('measurements')
+                .select('id, created_at, image_url, blue_weight, red_weight')
+                .limit(100);
+
+            if (error) {
+                throw error;
+            }
+
+            return (data || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        }
+
+        async function refreshDisplay() {
+            if (isRefreshing) {
+                return;
+            }
+
+            isRefreshing = true;
+
+            try {
+                const entries = await fetchAllMeasurements();
+                const batch = getBatch(entries, currentStartIndex);
+
+                gridEl.innerHTML = batch.map(renderSlot).join('');
+                statusEl.textContent = `Showing ${entries.length === 0 ? 0 : Math.min(currentStartIndex + 1, entries.length)}-${Math.min(currentStartIndex + BATCH_SIZE, entries.length)} of ${entries.length}`;
+
+                currentStartIndex = getNextStartIndex(entries.length, currentStartIndex);
+            } catch (error) {
+                console.error('Failed to refresh display:', error);
+                statusEl.textContent = `Error: ${error.message || 'Failed to load measurements'}`;
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        refreshDisplay();
+        setInterval(refreshDisplay, ROTATE_MS);
+    </script>
+</body>
+</html>

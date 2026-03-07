@@ -185,6 +185,33 @@
             display: none;
         }
 
+        .retry-btn {
+            margin-top: 8px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to bottom, #f0ad4e, #ec971f);
+            border: 2px solid #d58512;
+            border-radius: 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            display: none;
+        }
+
+        .retry-btn:hover {
+            background: linear-gradient(to bottom, #f3ba63, #eea236);
+        }
+
+        .retry-btn:disabled {
+            background: linear-gradient(to bottom, #ccc, #bbb);
+            border-color: #aaa;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         .camera-label {
             font-size: 20px;
             font-weight: bold;
@@ -308,6 +335,7 @@
             </div>
         </div>
         <img id="capturePreview" class="capture-preview" alt="Captured photo" />
+        <button id="retryBtn" class="retry-btn" type="button">Retry Upload</button>
     </div>
 
     <div class="container">
@@ -329,7 +357,7 @@
         <div class="score-row"><span>Lowest</span><span id="lowScore">-</span></div>
     </div>
 
-    <div class="instruction">Press SPACE to weigh the cows • Enter image URL and click Save Measurement</div>
+    <div class="instruction">Press SPACE to weigh, auto-capture, auto-upload, and auto-save</div>
 
     <div id="feedbackMessage" class="feedback-message"></div>
 
@@ -344,6 +372,8 @@
         let currentBlueWeight = 0;
         let currentRedWeight = 0;
         let isCountingDown = false;
+        let isSavingMeasurement = false;
+        let pendingRetryPayload = null;
 
         function generateRandomWeight() {
             return Math.floor(Math.random() * (1200 - 300 + 1)) + 300;
@@ -436,6 +466,7 @@
         const cameraCountdown = document.getElementById('cameraCountdown');
         const cameraFlash = document.getElementById('cameraFlash');
         const capturePreview = document.getElementById('capturePreview');
+        const retryBtn = document.getElementById('retryBtn');
 
         async function initCamera() {
             console.log('Requesting camera access...');
@@ -516,11 +547,53 @@
             capturePreview.src = imageDataUrl;
             capturePreview.style.display = 'block';
 
-            if (imageUrlInput) {
-                imageUrlInput.value = imageDataUrl;
+            return imageDataUrl;
+        }
+
+        async function insertMeasurementRecord(imageUrl, blueWeight, redWeight) {
+            const { data, error } = await supabaseClient
+                .from('measurements')
+                .insert([{
+                    image_url: imageUrl,
+                    blue_weight: blueWeight,
+                    red_weight: redWeight
+                }])
+                .select();
+
+            if (error) {
+                throw error;
             }
 
-            return imageDataUrl;
+            return data;
+        }
+
+        async function completeMeasurementFlow(imageDataUrl, blueWeight, redWeight) {
+            if (isSavingMeasurement) {
+                return;
+            }
+
+            isSavingMeasurement = true;
+
+            try {
+                const uploadedImageUrl = await uploadImageToCowsBucket(imageDataUrl);
+                await insertMeasurementRecord(uploadedImageUrl, blueWeight, redWeight);
+
+                pendingRetryPayload = null;
+                retryBtn.style.display = 'none';
+                showFeedback('Measurement uploaded and saved! 🎉', true);
+            } catch (error) {
+                pendingRetryPayload = {
+                    imageDataUrl,
+                    blueWeight,
+                    redWeight
+                };
+
+                retryBtn.style.display = 'block';
+                const errorMsg = error?.message || 'Upload/save failed.';
+                showFeedback(`Failed: ${errorMsg}`, false);
+            } finally {
+                isSavingMeasurement = false;
+            }
         }
 
         async function runCaptureCountdownAndTakePhoto() {
@@ -547,7 +620,7 @@
                 if (!capturedImage) {
                     showFeedback('Could not capture photo from camera.', false);
                 } else {
-                    showFeedback('Photo captured! Review and save measurement.', true);
+                    await completeMeasurementFlow(capturedImage, currentBlueWeight, currentRedWeight);
                 }
             } finally {
                 cameraCountdown.style.display = 'none';
@@ -565,9 +638,6 @@
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Get UI elements for URL input and submit
-        const imageUrlInput = document.getElementById('imageUrlInput');
-        const submitBtn = document.getElementById('submitBtn');
         const feedbackMessage = document.getElementById('feedbackMessage');
 
         // Show feedback message
@@ -581,60 +651,70 @@
             }, 4000);
         }
 
-        // Submit measurement to Supabase
-        async function submitMeasurement() {
-            const imageUrl = imageUrlInput.value.trim();
-            
-            // Validate image URL
-            if (!imageUrl) {
-                alert('Please enter an image URL');
-                return;
+        function generateRandomImageName() {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return `${window.crypto.randomUUID()}.jpg`;
             }
 
-            // Basic URL validation
-            try {
-                new URL(imageUrl);
-            } catch (e) {
-                alert('Please enter a valid URL');
-                return;
-            }
-
-            // Disable button during submission
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Saving...';
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from('measurements')
-                    .insert([{
-                        image_url: imageUrl,
-                        blue_weight: currentBlueWeight,
-                        red_weight: currentRedWeight
-                    }])
-                    .select();
-
-                if (error) throw error;
-
-                // Success - will handle in next step
-                return { success: true, data };
-            } catch (error) {
-                // Error - will handle in next step
-                return { success: false, error };
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Save Measurement';
-            }
+            const randomPart = Math.random().toString(36).slice(2, 10);
+            return `${Date.now()}-${randomPart}.jpg`;
         }
 
-        // Attach click handler to submit button
-        submitBtn.addEventListener('click', async () => {
-            const result = await submitMeasurement();
-            if (result.success) {
-                showFeedback('Measurement saved successfully! 🎉', true);
-                imageUrlInput.value = ''; // Clear the input field
-            } else {
-                const errorMsg = result.error?.message || 'Failed to save measurement. Please try again.';
-                showFeedback(`Error: ${errorMsg}`, false);
+        function dataUrlToBlob(dataUrl) {
+            const parts = dataUrl.split(',');
+            const mimeMatch = parts[0].match(/:(.*?);/);
+            const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+            const binary = atob(parts[1]);
+            const bytes = new Uint8Array(binary.length);
+
+            for (let index = 0; index < binary.length; index += 1) {
+                bytes[index] = binary.charCodeAt(index);
+            }
+
+            return new Blob([bytes], { type: mimeType });
+        }
+
+        async function uploadImageToCowsBucket(imageDataUrl) {
+            const fileName = generateRandomImageName();
+            const filePath = `captures/${fileName}`;
+            const imageBlob = dataUrlToBlob(imageDataUrl);
+
+            const { error: uploadError } = await supabaseClient.storage
+                .from('cows')
+                .upload(filePath, imageBlob, {
+                    contentType: imageBlob.type || 'image/jpeg',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            const { data: publicData } = supabaseClient.storage
+                .from('cows')
+                .getPublicUrl(filePath);
+
+            if (!publicData || !publicData.publicUrl) {
+                throw new Error('Upload succeeded but URL could not be generated.');
+            }
+
+            return publicData.publicUrl;
+        }
+
+        retryBtn.addEventListener('click', async () => {
+            if (!pendingRetryPayload || isSavingMeasurement) {
+                return;
+            }
+
+            retryBtn.disabled = true;
+            retryBtn.textContent = 'Retrying...';
+
+            try {
+                const { imageDataUrl, blueWeight, redWeight } = pendingRetryPayload;
+                await completeMeasurementFlow(imageDataUrl, blueWeight, redWeight);
+            } finally {
+                retryBtn.disabled = false;
+                retryBtn.textContent = 'Retry Upload';
             }
         });
     </script>
