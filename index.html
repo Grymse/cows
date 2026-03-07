@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cow Weight Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .weight-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            position: relative;
+            border-right: 3px solid #999;
+        }
+
+        .weight-side:last-child {
+            border-right: none;
+        }
+
+        .weight-side.blue {
+            background: linear-gradient(135deg, #b3d9ff 0%, #80c1ff 100%);
+        }
+
+        .weight-side.red {
+            background: linear-gradient(135deg, #ffb3b3 0%, #ff8080 100%);
+        }
+
+        .label {
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .weight-value {
+            font-size: 200px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+
+        .kg-label {
+            font-size: 56px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+            font-weight: bold;
+        }
+
+        .instruction {
+            position: absolute;
+            bottom: 20px;
+            font-size: 14px;
+            color: #666;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+        }
+
+        .scoreboard {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(240, 240, 240, 0.9);
+            border: 2px solid #9a9a9a;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.25);
+            padding: 14px 20px;
+            text-align: center;
+            min-width: 280px;
+            z-index: 2;
+        }
+
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            font-size: 24px;
+            color: #2a2a2a;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .score-row + .score-row {
+            margin-top: 10px;
+        }
+
+        /* 2010s button-like elements */
+        .weight-side {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="weight-side blue">
+            <div class="label">Blue Cow</div>
+            <div class="weight-value" id="blueWeight">450</div>
+            <div class="kg-label">kg</div>
+        </div>
+        <div class="weight-side red">
+            <div class="label">Red Cow</div>
+            <div class="weight-value" id="redWeight">750</div>
+            <div class="kg-label">kg</div>
+        </div>
+    </div>
+
+    <div class="scoreboard">
+        <div class="score-row"><span>Highest</span><span id="highScore">-</span></div>
+        <div class="score-row"><span>Lowest</span><span id="lowScore">-</span></div>
+    </div>
+
+    <div class="instruction">Press SPACE to weigh the cows</div>
+
+    <script>
+        const blueWeightEl = document.getElementById('blueWeight');
+        const redWeightEl = document.getElementById('redWeight');
+        const highScoreEl = document.getElementById('highScore');
+        const lowScoreEl = document.getElementById('lowScore');
+        let isAnimating = false;
+        let highScore = null;
+        let lowScore = null;
+
+        function generateRandomWeight() {
+            return Math.floor(Math.random() * (1200 - 300 + 1)) + 300;
+        }
+
+        function updateSharedScores(...weights) {
+            for (const weight of weights) {
+                if (highScore === null || weight > highScore) {
+                    highScore = weight;
+                }
+                if (lowScore === null || weight < lowScore) {
+                    lowScore = weight;
+                }
+            }
+
+            highScoreEl.textContent = `${highScore} kg`;
+            lowScoreEl.textContent = `${lowScore} kg`;
+        }
+
+        function animateWeights() {
+            if (isAnimating) return;
+            
+            isAnimating = true;
+            const animationDuration = 1000; // 5 seconds
+            const updateInterval = 80; // Update every 80ms for smooth flickering
+            const startTime = Date.now();
+            
+            // Generate target weights
+            const targetBlue = generateRandomWeight();
+            const targetRed = generateRandomWeight();
+            
+            const animationInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / animationDuration;
+                
+                if (progress < 0.9) {
+                    // First 90% - show random weights (measuring phase)
+                    blueWeightEl.textContent = generateRandomWeight();
+                    redWeightEl.textContent = generateRandomWeight();
+                } else if (progress < 1) {
+                    // Last 10% - gradually transition to target (settling phase)
+                    const settleProgress = (progress - 0.9) / 0.1;
+                    
+                    // Add some last-second fluctuation before settling
+                    if (Math.random() > 0.5) {
+                        blueWeightEl.textContent = generateRandomWeight();
+                        redWeightEl.textContent = generateRandomWeight();
+                    } else {
+                        blueWeightEl.textContent = targetBlue;
+                        redWeightEl.textContent = targetRed;
+                    }
+                } else {
+                    // Animation complete
+                    clearInterval(animationInterval);
+                    blueWeightEl.textContent = targetBlue;
+                    redWeightEl.textContent = targetRed;
+                    updateSharedScores(targetBlue, targetRed);
+                    isAnimating = false;
+                }
+            }, updateInterval);
+        }
+
+        // Listen for spacebar
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                animateWeights();
+            }
+        });
+
+        // Initialize with random weights
+        const initialBlue = generateRandomWeight();
+        const initialRed = generateRandomWeight();
+        blueWeightEl.textContent = initialBlue;
+        redWeightEl.textContent = initialRed;
+        updateSharedScores(initialBlue, initialRed);
+    </script>
+</body>
+</html>
