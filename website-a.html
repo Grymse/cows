@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cow Weight Challenge</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .weight-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            position: relative;
+            border-right: 3px solid #999;
+        }
+
+        .weight-side:last-child {
+            border-right: none;
+        }
+
+        .camera-section {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-radius: 8px;
+            z-index: 100;
+        }
+
+        .weight-side.blue {
+            background: linear-gradient(135deg, #b3d9ff 0%, #80c1ff 100%);
+        }
+
+        .weight-side.red {
+            background: linear-gradient(135deg, #ffb3b3 0%, #ff8080 100%);
+        }
+
+        .label {
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .weight-value {
+            font-size: 200px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+
+        .kg-label {
+            font-size: 56px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+            font-weight: bold;
+        }
+
+        .instruction {
+            position: absolute;
+            bottom: 20px;
+            font-size: 14px;
+            color: #666;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+        }
+
+        .scoreboard {
+            position: absolute;
+            top: 75%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(240, 240, 240, 0.9);
+            border: 2px solid #9a9a9a;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.25);
+            padding: 14px 20px;
+            text-align: center;
+            min-width: 280px;
+            z-index: 2;
+        }
+
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            font-size: 24px;
+            color: #2a2a2a;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .score-row + .score-row {
+            margin-top: 10px;
+        }
+
+        /* 2010s button-like elements */
+        .weight-side {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        /* Camera section styles */
+        #cameraVideo {
+            width: 100%;
+            border: 2px solid #666;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            background: #000;
+            transform: rotateY(180deg);
+        }
+
+        .camera-frame {
+            position: relative;
+            width: 100%;
+        }
+
+        .camera-countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 90px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 12px rgba(0, 0, 0, 0.9);
+            z-index: 10;
+            display: none;
+            pointer-events: none;
+        }
+
+        .camera-flash {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 6px;
+            z-index: 9;
+            display: none;
+            pointer-events: none;
+        }
+
+        .capture-preview {
+            width: 50%;
+            margin-top: 8px;
+            align-self: center;
+            border: 2px solid #666;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .camera-label {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .camera-placeholder {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border: 2px solid #666;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 14px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .url-input-container {
+            margin-top: 12px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 13px;
+            border: 2px solid #999;
+            border-radius: 5px;
+            background: #fff;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+
+        .submit-btn {
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to bottom, #5cb85c, #4cae4c);
+            border: 2px solid #4cae4c;
+            border-radius: 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all 0.2s;
+        }
+
+        .submit-btn:hover {
+            background: linear-gradient(to bottom, #6cc86c, #5cbd5c);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .submit-btn:disabled {
+            background: linear-gradient(to bottom, #ccc, #bbb);
+            border-color: #aaa;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .feedback-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s, transform 0.3s;
+            max-width: 400px;
+        }
+
+        .feedback-message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feedback-message.success {
+            background: linear-gradient(to bottom, #5cb85c, #4cae4c);
+            color: #fff;
+            border: 2px solid #4cae4c;
+        }
+
+        .feedback-message.error {
+            background: linear-gradient(to bottom, #d9534f, #c9302c);
+            color: #fff;
+            border: 2px solid #c9302c;
+        }
+    </style>
+</head>
+<body>
+    <div class="camera-section">
+        <div class="camera-frame">
+            <video id="cameraVideo" autoplay playsinline></video>
+            <div id="cameraCountdown" class="camera-countdown"></div>
+            <div id="cameraFlash" class="camera-flash"></div>
+            <div class="camera-placeholder" id="cameraPlaceholder" style="display: none;">
+                Camera not available
+            </div>
+        </div>
+        <img id="capturePreview" class="capture-preview" alt="Captured photo" />
+    </div>
+
+    <div class="container">
+        <div class="weight-side blue">
+            <div class="label">Blue Cow</div>
+            <div class="weight-value" id="blueWeight">450</div>
+            <div class="kg-label">kg</div>
+        </div>
+        
+        <div class="weight-side red">
+            <div class="label">Red Cow</div>
+            <div class="weight-value" id="redWeight">750</div>
+            <div class="kg-label">kg</div>
+        </div>
+    </div>
+
+    <div class="scoreboard">
+        <div class="score-row"><span>Highest</span><span id="highScore">-</span></div>
+        <div class="score-row"><span>Lowest</span><span id="lowScore">-</span></div>
+    </div>
+
+    <div class="instruction">Press SPACE to weigh the cows • Enter image URL and click Save Measurement</div>
+
+    <div id="feedbackMessage" class="feedback-message"></div>
+
+    <script>
+        const blueWeightEl = document.getElementById('blueWeight');
+        const redWeightEl = document.getElementById('redWeight');
+        const highScoreEl = document.getElementById('highScore');
+        const lowScoreEl = document.getElementById('lowScore');
+        let isAnimating = false;
+        let highScore = null;
+        let lowScore = null;
+        let currentBlueWeight = 0;
+        let currentRedWeight = 0;
+        let isCountingDown = false;
+
+        function generateRandomWeight() {
+            return Math.floor(Math.random() * (1200 - 300 + 1)) + 300;
+        }
+
+        function updateSharedScores(...weights) {
+            for (const weight of weights) {
+                if (highScore === null || weight > highScore) {
+                    highScore = weight;
+                }
+                if (lowScore === null || weight < lowScore) {
+                    lowScore = weight;
+                }
+            }
+
+            highScoreEl.textContent = `${highScore} kg`;
+            lowScoreEl.textContent = `${lowScore} kg`;
+        }
+
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        function animateWeights() {
+            if (isAnimating) return;
+            
+            isAnimating = true;
+            const animationDuration = 1000; // 1 second
+            const updateInterval = 80; // Update every 80ms for smooth flickering
+            const startTime = Date.now();
+            
+            // Generate target weights
+            const targetBlue = generateRandomWeight();
+            const targetRed = generateRandomWeight();
+            
+            const animationInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / animationDuration;
+                
+                if (progress < 0.9) {
+                    // First 90% - show random weights (measuring phase)
+                    blueWeightEl.textContent = generateRandomWeight();
+                    redWeightEl.textContent = generateRandomWeight();
+                } else if (progress < 1) {
+                    // Last 10% - gradually transition to target (settling phase)
+                    const settleProgress = (progress - 0.9) / 0.1;
+                    
+                    // Add some last-second fluctuation before settling
+                    if (Math.random() > 0.5) {
+                        blueWeightEl.textContent = generateRandomWeight();
+                        redWeightEl.textContent = generateRandomWeight();
+                    } else {
+                        blueWeightEl.textContent = targetBlue;
+                        redWeightEl.textContent = targetRed;
+                    }
+                } else {
+                    // Animation complete
+                    clearInterval(animationInterval);
+                    blueWeightEl.textContent = targetBlue;
+                    redWeightEl.textContent = targetRed;
+                    currentBlueWeight = targetBlue;
+                    currentRedWeight = targetRed;
+                    updateSharedScores(targetBlue, targetRed);
+                    isAnimating = false;
+                    runCaptureCountdownAndTakePhoto();
+                }
+            }, updateInterval);
+        }
+
+        // Listen for spacebar
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                animateWeights();
+            }
+        });
+
+        // Initialize with random weights
+        const initialBlue = generateRandomWeight();
+        const initialRed = generateRandomWeight();
+        blueWeightEl.textContent = initialBlue;
+        redWeightEl.textContent = initialRed;
+        currentBlueWeight = initialBlue;
+        currentRedWeight = initialRed;
+        updateSharedScores(initialBlue, initialRed);
+
+        // Initialize camera
+        const cameraVideo = document.getElementById('cameraVideo');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const cameraCountdown = document.getElementById('cameraCountdown');
+        const cameraFlash = document.getElementById('cameraFlash');
+        const capturePreview = document.getElementById('capturePreview');
+
+        async function initCamera() {
+            console.log('Requesting camera access...');
+            
+            // Check if getUserMedia is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('getUserMedia is not supported in this browser');
+                cameraVideo.style.display = 'none';
+                cameraPlaceholder.style.display = 'flex';
+                cameraPlaceholder.textContent = 'Camera not supported';
+                return;
+            }
+
+            try {
+                // Try with rear camera first
+                let constraints = { 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (err) {
+                    // If rear camera fails, try any available camera
+                    console.log('Rear camera not available, trying any camera...');
+                    constraints = { video: true, audio: false };
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                }
+                
+                cameraVideo.srcObject = stream;
+                
+                // Ensure video plays
+                try {
+                    await cameraVideo.play();
+                } catch (playError) {
+                    console.log('Autoplay handled by browser');
+                }
+                
+                cameraVideo.style.display = 'block';
+                cameraPlaceholder.style.display = 'none';
+                console.log('Camera initialized successfully');
+            } catch (error) {
+                console.error('Camera access error:', error);
+                cameraVideo.style.display = 'none';
+                cameraPlaceholder.style.display = 'flex';
+                
+                if (error.name === 'NotAllowedError') {
+                    cameraPlaceholder.textContent = 'Camera permission denied';
+                } else if (error.name === 'NotFoundError') {
+                    cameraPlaceholder.textContent = 'No camera found';
+                } else {
+                    cameraPlaceholder.textContent = 'Camera error: ' + error.name;
+                }
+            }
+        }
+
+        function capturePhotoFromVideo() {
+            if (!cameraVideo.srcObject || cameraVideo.videoWidth === 0 || cameraVideo.videoHeight === 0) {
+                return null;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = cameraVideo.videoWidth;
+            canvas.height = cameraVideo.videoHeight;
+            const context = canvas.getContext('2d');
+
+            context.translate(canvas.width, 0);
+            context.scale(-1, 1);
+            context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+
+            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+            capturePreview.src = imageDataUrl;
+            capturePreview.style.display = 'block';
+
+            if (imageUrlInput) {
+                imageUrlInput.value = imageDataUrl;
+            }
+
+            return imageDataUrl;
+        }
+
+        async function runCaptureCountdownAndTakePhoto() {
+            if (isCountingDown || !cameraVideo.srcObject) {
+                return;
+            }
+
+            isCountingDown = true;
+
+            try {
+                const countValues = ['3', '2', '1'];
+                for (const value of countValues) {
+                    cameraCountdown.textContent = value;
+                    cameraCountdown.style.display = 'block';
+                    await sleep(1000);
+                }
+
+                cameraCountdown.style.display = 'none';
+                cameraFlash.style.display = 'block';
+                await sleep(120);
+                cameraFlash.style.display = 'none';
+
+                const capturedImage = capturePhotoFromVideo();
+                if (!capturedImage) {
+                    showFeedback('Could not capture photo from camera.', false);
+                } else {
+                    showFeedback('Photo captured! Review and save measurement.', true);
+                }
+            } finally {
+                cameraCountdown.style.display = 'none';
+                cameraFlash.style.display = 'none';
+                isCountingDown = false;
+            }
+        }
+
+        // Initialize camera on page load
+        initCamera();
+
+        // Supabase configuration
+        const SUPABASE_URL = 'https://iukxcgvmzjfelwfrpkyi.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1a3hjZ3ZtempmZWx3ZnJwa3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0ODIyNTUsImV4cCI6MjA1ODA1ODI1NX0.GeapZttOxLzI_rnUUo6wlApy8wfHdkYzFNrSnP5NIYw';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Get UI elements for URL input and submit
+        const imageUrlInput = document.getElementById('imageUrlInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+
+        // Show feedback message
+        function showFeedback(message, isSuccess) {
+            feedbackMessage.textContent = message;
+            feedbackMessage.className = `feedback-message ${isSuccess ? 'success' : 'error'} show`;
+            
+            // Hide after 4 seconds
+            setTimeout(() => {
+                feedbackMessage.classList.remove('show');
+            }, 4000);
+        }
+
+        // Submit measurement to Supabase
+        async function submitMeasurement() {
+            const imageUrl = imageUrlInput.value.trim();
+            
+            // Validate image URL
+            if (!imageUrl) {
+                alert('Please enter an image URL');
+                return;
+            }
+
+            // Basic URL validation
+            try {
+                new URL(imageUrl);
+            } catch (e) {
+                alert('Please enter a valid URL');
+                return;
+            }
+
+            // Disable button during submission
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('measurements')
+                    .insert([{
+                        image_url: imageUrl,
+                        blue_weight: currentBlueWeight,
+                        red_weight: currentRedWeight
+                    }])
+                    .select();
+
+                if (error) throw error;
+
+                // Success - will handle in next step
+                return { success: true, data };
+            } catch (error) {
+                // Error - will handle in next step
+                return { success: false, error };
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Measurement';
+            }
+        }
+
+        // Attach click handler to submit button
+        submitBtn.addEventListener('click', async () => {
+            const result = await submitMeasurement();
+            if (result.success) {
+                showFeedback('Measurement saved successfully! 🎉', true);
+                imageUrlInput.value = ''; // Clear the input field
+            } else {
+                const errorMsg = result.error?.message || 'Failed to save measurement. Please try again.';
+                showFeedback(`Error: ${errorMsg}`, false);
+            }
+        });
+    </script>
+</body>
+</html>
