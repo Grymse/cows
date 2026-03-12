@@ -1,0 +1,59 @@
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: var(--surface);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  vertical-align: top;
+  text-align: left;
+}
+
+th {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 88%, var(--border));
+}
+
+.col-day {
+  width: 120px;
+}
+
+.col-hours {
+  width: 80px;
+}
+
+.col-action {
+  width: 56px;
+}
+
+td.action-cell {
+  padding: 4px 6px;
+}
+
+.delete-btn {
+  display: inline-block;
+  width: auto;
+  height: 18px;
+  min-height: 18px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 1;
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  color: var(--danger);
+  background: transparent;
+}
+
+.delete-btn:hover {
+  border-color: var(--danger-hover);
+  color: var(--danger-hover);
+  background: #fef2f2;
+}

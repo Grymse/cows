@@ -1,0 +1,57 @@
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --border: #d8dee8;
+  --text: #1f2633;
+  --muted: #697488;
+  --primary: #2563eb;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --status-bg: #eef4ff;
+  --status-border: #c9d8ff;
+  --status-text: #1f3d99;
+  --status-success-bg: #ecfdf3;
+  --status-success-border: #b7efcc;
+  --status-success-text: #0f6a3d;
+  --status-error-bg: #fef2f2;
+  --status-error-border: #fecaca;
+  --status-error-text: #991b1b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.app {
+  margin: 0;
+  padding: 8px;
+  width: 450px;
+  font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  width: 100%;
+}
+
+input,
+button {
+  height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+button {
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 50ms ease, color 50ms ease, border-color 50ms ease;
+}

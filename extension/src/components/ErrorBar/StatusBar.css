@@ -1,0 +1,12 @@
+.error-bar {
+  margin-bottom: 8px;
+  padding: 5px 7px;
+  border: 1px solid var(--status-error-border);
+  border-radius: 6px;
+  background: var(--status-error-bg);
+  color: var(--status-error-text);
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

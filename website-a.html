@@ -494,6 +494,28 @@
         const cameraFlash = document.getElementById('cameraFlash');
         const capturePreview = document.getElementById('capturePreview');
         const retryBtn = document.getElementById('retryBtn');
+        const countdownAudio = new Audio('sound-effect.mp3');
+        countdownAudio.preload = 'auto';
+
+        function playCountdownSound() {
+            try {
+                countdownAudio.currentTime = 0;
+                const playPromise = countdownAudio.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch((error) => {
+                        console.warn('Countdown sound could not autoplay:', error);
+                    });
+                }
+            } catch (error) {
+                console.warn('Countdown sound failed to play:', error);
+            }
+        }
+
+        function playCountdownSoundWithDelay(delayMs = 400) {
+            setTimeout(() => {
+                playCountdownSound();
+            }, delayMs);
+        }
 
         async function initCamera() {
             console.log('Requesting camera access...');
@@ -631,6 +653,7 @@
             isCountingDown = true;
 
             try {
+                playCountdownSoundWithDelay(400);
                 const countValues = ['3', '2', '1'];
                 for (const value of countValues) {
                     cameraCountdown.textContent = value;

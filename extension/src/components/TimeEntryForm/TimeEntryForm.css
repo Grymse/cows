@@ -1,0 +1,17 @@
+.time-entry-form {
+  display: grid;
+  grid-template-columns: 120px 80px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.time-entry-form button[type="submit"] {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.time-entry-form button[type="submit"]:hover {
+  filter: brightness(0.95);
+}
