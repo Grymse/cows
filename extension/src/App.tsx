@@ -28,6 +28,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = createSignal<string | null>("The request did not go well. You need to fill out the form such that this and that is well prepared");
   const [isLoading, setIsLoading] = createSignal(false);
   const [entries, setEntries] = createSignal<TimeEntry[]>(initialEntries);
+  const totalHours = () => entries().reduce((sum, entry) => sum + entry.hours, 0);
 
   let nextId = 5;
 
@@ -51,7 +52,7 @@ export default function App() {
       <div class="app">
         <Loader isLoading={isLoading} />
         <ErrorBar errorMessage={errorMessage} />
-        <User user={user} />
+        <User user={user} totalHours={totalHours} />
         <TimeEntryForm onSubmit={handleSubmit} />
         <TimeEntries entries={entries} onDelete={deleteEntry} />
       </div>

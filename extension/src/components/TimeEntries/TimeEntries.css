@@ -1,9 +1,9 @@
+
 table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
   background: var(--surface);
-  border-radius: 6px;
   overflow: hidden;
 }
 
